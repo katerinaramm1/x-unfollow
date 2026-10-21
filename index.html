@@ -22,6 +22,7 @@
   .btn.alt{background:transparent;color:var(--accent-d)}
   .btn.small{padding:4px 12px;font-size:.85rem}
   .btn:hover{filter:brightness(.95)}
+  .btn.disabled{opacity:.5;pointer-events:none}
   .drop{border:2px dashed var(--line);border-radius:12px;padding:22px;text-align:center}
   .drop.over{border-color:var(--accent)}
   .note{font-size:.88rem;color:var(--muted)}
@@ -38,9 +39,23 @@
   .tab{border:1px solid var(--line);background:transparent;color:var(--text);border-radius:999px;padding:6px 14px;font:inherit;font-size:.9rem;cursor:pointer}
   .tab[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
   .row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
-  .row.done .id{text-decoration:line-through;color:var(--muted)}
-  .row .id{flex:1;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.9rem;word-break:break-all}
-  .row input{width:18px;height:18px}
+  .row{flex-wrap:wrap;padding:8px 10px;border-radius:10px}
+  .row.done{background:rgba(18,128,92,.12)}
+  .row.skip{background:rgba(120,130,140,.12)}
+  .row.done .id{text-decoration:line-through;color:var(--ok)}
+  .row.skip .id{text-decoration:line-through;color:var(--muted)}
+  .row .id{flex:1;min-width:140px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.9rem;word-break:break-all}
+  .row .num{min-width:34px;color:var(--muted);font-size:.85rem}
+  .row .meta{font-size:.85rem;color:var(--muted)}
+  .row.done .meta{color:var(--ok);font-weight:600}
+  .panel{position:sticky;top:8px;z-index:5;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 14px;margin:10px 0;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+  .panel .lbl{font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .panel .clock{font:600 1.6rem/1.1 ui-monospace,Menlo,Consolas,monospace}
+  .panel .grow{flex:1;min-width:120px}
+  .panel .pcount{font-size:.9rem;color:var(--muted)}
+  .panel .remaining{flex-basis:100%;margin:0}
+  .pill{border-radius:999px;padding:4px 12px;font-size:.85rem;font-weight:600;background:rgba(217,119,6,.18);color:var(--warn)}
+  .pill.ready{background:rgba(18,128,92,.18);color:var(--ok)}
   .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
   .todo{font-weight:600;color:var(--warn)}
   .hidden{display:none}
@@ -101,10 +116,16 @@
     </div>
     <div class="toolbar">
       <label class="note">Show <select id="size"><option value="20" selected>20</option><option value="50">50</option><option value="100">100</option></select> per page</label>
-      <span class="todo" id="todo"></span>
       <button class="btn alt small" id="csv" type="button">Download CSV</button>
     </div>
-    <p class="note" id="idNote">X's archive contains account IDs only, not usernames. Tap <b>Open profile</b> to go straight to that person's profile on X, then use the <b>Following</b> button there to unfollow. Come back and tick the box once you've done it. This page never logs in to X or unfollows for you.</p>
+    <p class="note" id="idNote">X's archive contains account IDs only, not usernames. Tap <b>Open profile</b> to go straight to that person's profile on X, then use the <b>Following</b> button there to unfollow. When you tap <b>Open profile</b>, the account is crossed out and a short pause starts, so you don't act too fast on X. Use <b>Undo</b> if you opened it by mistake, or <b>Not following</b> if you were no longer following that account. This page never logs in to X or unfollows for you.</p>
+    <div class="panel hidden" id="panel">
+      <div><div class="lbl">Since last click</div><div class="clock" id="clock">00:00</div></div>
+      <span class="pill ready" id="pill">Ready</span>
+      <div class="grow"><div class="bar" id="prog" style="height:10px;margin:0" aria-hidden="true"></div></div>
+      <div class="pcount" id="pcount"></div>
+      <div class="note remaining" id="remaining"></div>
+    </div>
     <div id="list"></div>
     <div class="toolbar" id="pager" style="margin-top:10px"></div>
   </section>
@@ -152,13 +173,14 @@ var GOATCOUNTER    = "katerinaramm";   // GoatCounter site code (katerinaramm.go
 var HASHTAG        = "XFollowBackCheck";  // hashtag added to shared posts (no # sign)
 var X_HANDLE       = "katerinaramm1";     // credited in shared posts as "via @katerinaramm1"
 var REMIND_HOURS   = 30;                  // reminder to come back for the archive
+var WAIT_MIN = 12, WAIT_MAX = 25;         // pause (seconds) after each "Open profile" click; a value in this range is picked each time
 /* ================================= */
 
 var ZIPJS_SRC = "https://cdn.jsdelivr.net/npm/@zip.js/zip.js@2/dist/zip.min.js";
 var size = 20, page = 0;
 var data = {following: new Map(), follower: new Map()};
 var lists = {not: [], fans: [], mutual: []};
-var tab = "not", shown = 0, doneSet = new Set(), rate = 0;
+var tab = "not", shown = 0, doneSet = new Set(), marks = new Map(), rate = 0;
 
 var $ = function(id){return document.getElementById(id)};
 
@@ -252,7 +274,7 @@ function kindOf(name){
 }
 
 async function handle(files){
-  data.following.clear(); data.follower.clear(); doneSet.clear();
+  data.following.clear(); data.follower.clear(); doneSet.clear(); marks.clear(); resetClock();
   say("Reading your file...");
   try {
     var items = [];
@@ -316,8 +338,9 @@ function render(){
   var arr = lists[tab], pages = Math.max(1, Math.ceil(arr.length / size));
   if (page >= pages) page = pages - 1;
   var list = $("list"); list.innerHTML = "";
-  arr.slice(page * size, page * size + size).forEach(function(o){ list.appendChild(makeRow(o)) });
+  arr.slice(page * size, page * size + size).forEach(function(o, i){ list.appendChild(makeRow(o, page * size + i)) });
   if (!arr.length) list.innerHTML = '<p class="note">Nothing here.</p>';
+  applyWait(); updateTodo();
   var pg = $("pager"); pg.innerHTML = "";
   if (pages > 1) {
     var prev = document.createElement("button"); prev.className = "btn alt small"; prev.type = "button"; prev.textContent = "\u2190 Previous"; prev.disabled = page === 0;
@@ -331,23 +354,75 @@ function render(){
 $("size").onchange = function(){ size = parseInt($("size").value, 10); page = 0; render(); };
 function profileUrl(id){ return "https://x.com/i/user/" + id }
 
-function makeRow(o){
-  var r = document.createElement("div"); r.className = "row" + (doneSet.has(o.id) ? " done" : "");
-  if (tab === "not") {
-    var c = document.createElement("input"); c.type = "checkbox"; c.checked = doneSet.has(o.id);
-    c.setAttribute("aria-label","Mark as unfollowed");
-    c.onchange = function(){ c.checked ? doneSet.add(o.id) : doneSet.delete(o.id); r.classList.toggle("done", c.checked); updateTodo() };
-    r.appendChild(c);
-  }
+function nowTime(){ return new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}) }
+function rowBtn(label, fn){ var b = document.createElement("button"); b.type = "button"; b.className = "btn alt small"; b.textContent = label; b.onclick = fn; return b }
+
+function makeRow(o, idx){
+  var st = marks.get(o.id);   /* undefined, or {k:"done"|"skip", t:"05:25 PM"} */
+  var r = document.createElement("div");
+  r.className = "row" + (tab === "not" && st ? (st.k === "skip" ? " skip" : " done") : "");
+  var n = document.createElement("span"); n.className = "num"; n.textContent = idx + 1; r.appendChild(n);
   var s = document.createElement("span"); s.className = "id"; s.textContent = "ID " + o.id; r.appendChild(s);
+  if (tab === "not" && st) {
+    var m = document.createElement("span"); m.className = "meta";
+    m.textContent = st.k === "skip" ? "Not following" : "Clicked " + st.t; r.appendChild(m);
+    r.appendChild(rowBtn("Undo", function(){ marks.delete(o.id); doneSet.delete(o.id); render(); }));
+    if (st.k === "done") r.appendChild(rowBtn("Not following", function(){ marks.set(o.id, {k:"skip", t:st.t}); render(); }));
+    return r;
+  }
   var a = document.createElement("a"); a.className = "btn alt small"; a.href = profileUrl(o.id); a.target = "_blank"; a.rel = "noopener noreferrer"; a.textContent = "Open profile";
+  if (tab === "not") a.classList.add("open");
+  /* tapping Open profile marks the account as clicked and starts the pause */
+  a.onclick = a.onauxclick = function(e){
+    if (e.type === "auxclick" && e.button !== 1) return;   /* only middle-click, not right-click */
+    if (tab !== "not") return;
+    if (Date.now() < waitUntil) { e.preventDefault(); return; }   /* still waiting */
+    marks.set(o.id, {k:"done", t:nowTime()}); doneSet.add(o.id); startWait();
+    setTimeout(render, 80);   /* redraw after the link has opened */
+  };
   r.appendChild(a);
   return r;
 }
+
+/* progress panel: clicked / remaining on this page and overall */
 function updateTodo(){
-  var t = $("todo");
-  if (tab === "not") t.textContent = (lists.not.length - doneSet.size).toLocaleString() + " left to do";
-  else t.textContent = "";
+  var p = $("panel");
+  if (tab !== "not") { p.classList.add("hidden"); return; }
+  p.classList.remove("hidden");
+  var arr = lists.not, slice = arr.slice(page * size, page * size + size);
+  var d = slice.filter(function(o){ return doneSet.has(o.id) }).length;
+  $("pcount").textContent = d + " of " + slice.length + " done";
+  $("prog").innerHTML = '<div style="width:' + (slice.length ? d / slice.length * 100 : 0) + '%;background:#12805c"></div>';
+  $("remaining").textContent = (arr.length - doneSet.size).toLocaleString() + " remaining in total · " + doneSet.size.toLocaleString() + " clicked so far";
+}
+
+/* pause after each "Open profile" click in the not-following-back list */
+var waitUntil = 0, waitSecs = 0, lastClick = 0, ticker = null;
+function applyWait(){
+  var left = Math.ceil((waitUntil - Date.now()) / 1000);
+  document.querySelectorAll("a.open").forEach(function(a){
+    if (left > 0) { a.classList.add("disabled"); a.setAttribute("aria-disabled", "true"); a.textContent = "Wait " + left + "s"; }
+    else { a.classList.remove("disabled"); a.removeAttribute("aria-disabled"); a.textContent = "Open profile"; }
+  });
+}
+function tick(){
+  if (!lastClick) return;
+  var el = Math.floor((Date.now() - lastClick) / 1000), ready = Date.now() >= waitUntil, pill = $("pill");
+  $("clock").textContent = pad2(Math.floor(el / 60)) + ":" + pad2(el % 60);
+  pill.textContent = ready ? "Ready" : "Wait " + waitSecs + " s";
+  pill.classList.toggle("ready", ready);
+  applyWait();
+}
+function startWait(){
+  lastClick = Date.now();
+  waitSecs = WAIT_MIN + Math.floor(Math.random() * (WAIT_MAX - WAIT_MIN + 1));
+  waitUntil = lastClick + waitSecs * 1000;
+  tick();
+  if (!ticker) ticker = setInterval(tick, 250);
+}
+function resetClock(){
+  lastClick = 0; waitUntil = 0;
+  $("clock").textContent = "00:00"; $("pill").textContent = "Ready"; $("pill").classList.add("ready");
 }
 
 /* CSV */
