@@ -56,11 +56,16 @@
     <h2>1. Get your archive from X</h2>
     <ol>
       <li>Open <a href="https://x.com/settings/download_your_data" target="_blank" rel="noopener">X &rarr; Settings and privacy &rarr; Your account &rarr; Download an archive of your data</a>. If the link doesn't open, go there through the Settings menu.</li>
-      <li>Confirm your identity and click <b>Request archive</b>.</li>
+      <li>Enter your X password when it asks, then click <b>Request archive</b>. (X may also ask for a verification code.)</li>
       <li>X prepares it and notifies you. This can take a day or more.</li>
       <li>Download the <b>.zip</b> file when it is ready.</li>
     </ol>
     <p class="note">The archive is a snapshot from the day you requested it, so results are "as of that day".</p>
+    <p style="margin:.9em 0 .3em"><b>Don't forget to come back!</b> Set a reminder for about 30 hours from now (<span id="remindWhen"></span>):</p>
+    <div class="toolbar">
+      <button class="btn small" id="remGoogle" type="button">Google Calendar</button>
+      <button class="btn alt small" id="remIcs" type="button">Apple / Outlook / phone (.ics file)</button>
+    </div>
   </section>
 
   <section class="card">
@@ -95,12 +100,13 @@
       <button class="tab" role="tab" data-tab="mutual" aria-selected="false">Mutuals</button>
     </div>
     <div class="toolbar">
+      <label class="note">Show <select id="size"><option value="20" selected>20</option><option value="50">50</option><option value="100">100</option></select> per page</label>
       <span class="todo" id="todo"></span>
       <button class="btn alt small" id="csv" type="button">Download CSV</button>
     </div>
-    <p class="note" id="idNote">X's archive contains account IDs only, not usernames. Tap <b>Open profile</b> to see who it is on X, then unfollow there if you like. Tick the box once you've done it. This page never logs in to X or unfollows for you.</p>
+    <p class="note" id="idNote">X's archive contains account IDs only, not usernames. Tap <b>Open profile</b> to go straight to that person's profile on X, then use the <b>Following</b> button there to unfollow. Come back and tick the box once you've done it. This page never logs in to X or unfollows for you.</p>
     <div id="list"></div>
-    <div style="margin-top:10px"><button class="btn alt small hidden" id="more" type="button">Show more</button></div>
+    <div class="toolbar" id="pager" style="margin-top:10px"></div>
   </section>
 
   <section class="card hidden" id="shareCard">
@@ -122,11 +128,20 @@
   <section class="card" id="privacy">
     <h2>Privacy</h2>
     <p>Your archive is read and processed only in your browser. The files are not uploaded, saved or sent anywhere, and nothing is stored once you close or reload the page. The page does not ask for your X login or password.</p>
-    <p>The page counts visits with a simple, cookie-free visit counter that records page views only, never your files or results. Feedback is sent only if you choose to submit the feedback form, which is an outside service. Links to X and to the feedback form are outside links.</p>
+    <p>The page counts visits with a simple, cookie-free visit counter that records page views only, never your files or results. The total shown at the bottom of the page comes from that counter. Feedback is sent only if you choose to submit the feedback form, which is an outside service. Links to X and to the feedback form are outside links.</p>
     <p class="note">This tool is independent and is not affiliated with or endorsed by X Corp.</p>
   </section>
 
-  <footer>Created with love by @katerinaramm1 with the valuable help of Claude</footer>
+  <section class="card">
+    <h2>Also on Instagram</h2>
+    <p>Want the same check for Instagram? Try the Instagram unfollow tool.</p>
+    <a class="btn" href="https://katerinaramm1.github.io/insta-unfollow/" target="_blank" rel="noopener">Open the Instagram tool</a>
+  </section>
+
+  <footer>
+    <p><a href="https://x.com/katerinaramm1" target="_blank" rel="noopener">Follow @katerinaramm1 on X</a></p>
+    <p class="note hidden" id="visits"></p>
+    Created with love by @katerinaramm1 with the valuable help of Claude</footer>
 </div>
 
 <script>
@@ -134,10 +149,13 @@
 var SITE_URL       = "https://katerinaramm1.github.io/x-unfollow/";  // change to the real address
 var FEEDBACK_URL   = "https://forms.zohopublic.eu/katerinarammzoho1/form/YourFeedbackontheInstagramUnfollowApp/formperma/gP7CvSKHapc6O_GA5-PBBoAKGLjJx-MFsidYLYOYx_E";
 var GOATCOUNTER    = "katerinaramm";   // GoatCounter site code (katerinaramm.goatcounter.com)
+var HASHTAG        = "XFollowBackCheck";  // hashtag added to shared posts (no # sign)
+var X_HANDLE       = "katerinaramm1";     // credited in shared posts as "via @katerinaramm1"
+var REMIND_HOURS   = 30;                  // reminder to come back for the archive
 /* ================================= */
 
 var ZIPJS_SRC = "https://cdn.jsdelivr.net/npm/@zip.js/zip.js@2/dist/zip.min.js";
-var PAGE = 200;
+var size = 20, page = 0;
 var data = {following: new Map(), follower: new Map()};
 var lists = {not: [], fans: [], mutual: []};
 var tab = "not", shown = 0, doneSet = new Set(), rate = 0;
@@ -152,6 +170,45 @@ if (GOATCOUNTER) {
   gc.setAttribute("data-goatcounter", "https://" + GOATCOUNTER + ".goatcounter.com/count");
   document.head.appendChild(gc);
 }
+
+/* public visit total (needs the GoatCounter setting "Allow adding visitor counts on your website").
+   If that is off or the request fails, nothing is shown. */
+if (GOATCOUNTER) {
+  fetch("https://" + GOATCOUNTER + ".goatcounter.com/counter/TOTAL.json")
+    .then(function(r){ if (!r.ok) throw new Error("no counter"); return r.json() })
+    .then(function(j){ if (j && j.count) { $("visits").textContent = j.count + " visits so far"; $("visits").classList.remove("hidden") } })
+    .catch(function(){});
+}
+
+/* reminder to come back (calendar link or .ics file, built in the browser) */
+function pad2(n){ return (n < 10 ? "0" : "") + n }
+function icsTime(d){ return d.getUTCFullYear() + pad2(d.getUTCMonth()+1) + pad2(d.getUTCDate()) + "T" + pad2(d.getUTCHours()) + pad2(d.getUTCMinutes()) + "00Z" }
+function reminder(){
+  var start = new Date(Date.now() + REMIND_HOURS * 3600 * 1000);
+  return {
+    start: start, end: new Date(start.getTime() + 15 * 60 * 1000),
+    title: "Download your X archive and check who doesn't follow back",
+    details: "Your X data archive should be ready now. Download the .zip from X, then upload it here: " + SITE_URL
+  };
+}
+function showRemindTime(){ $("remindWhen").textContent = reminder().start.toLocaleString([], {weekday:"short", day:"numeric", month:"short", hour:"2-digit", minute:"2-digit"}) }
+showRemindTime();
+$("remGoogle").onclick = function(){
+  var r = reminder();
+  window.open("https://calendar.google.com/calendar/render?action=TEMPLATE&text=" + encodeURIComponent(r.title) + "&details=" + encodeURIComponent(r.details) + "&dates=" + icsTime(r.start) + "/" + icsTime(r.end), "_blank", "noopener");
+};
+$("remIcs").onclick = function(){
+  var r = reminder(), esc = function(s){ return s.replace(/[\\;,]/g, "\\$&") };
+  var ics = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//x-unfollow//EN","BEGIN:VEVENT",
+    "UID:" + Date.now() + "@x-unfollow","DTSTAMP:" + icsTime(new Date()),"DTSTART:" + icsTime(r.start),"DTEND:" + icsTime(r.end),
+    "SUMMARY:" + esc(r.title),"DESCRIPTION:" + esc(r.details),
+    "BEGIN:VALARM","TRIGGER:PT0M","ACTION:DISPLAY","DESCRIPTION:" + esc(r.title),"END:VALARM",
+    "END:VEVENT","END:VCALENDAR"].join("\r\n");
+  var blob = new Blob([ics], {type:"text/calendar;charset=utf-8"});
+  var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "x-archive-reminder.ics";
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){URL.revokeObjectURL(a.href)}, 2000);
+  showRemindTime();
+};
 
 /* feedback link */
 if (FEEDBACK_URL) $("feedback").href = FEEDBACK_URL;
@@ -253,17 +310,26 @@ document.querySelectorAll(".tab").forEach(function(b){b.onclick=function(){setTa
 function setTab(t){
   tab = t;
   document.querySelectorAll(".tab").forEach(function(b){b.setAttribute("aria-selected", b.dataset.tab===t)});
-  $("list").innerHTML = ""; shown = 0; renderMore(); updateTodo();
+  page = 0; render(); updateTodo();
 }
-function renderMore(){
-  var arr = lists[tab], end = Math.min(shown + PAGE, arr.length);
-  for (var i = shown; i < end; i++) $("list").appendChild(makeRow(arr[i]));
-  shown = end;
-  $("more").classList.toggle("hidden", shown >= arr.length);
-  $("more").textContent = "Show more (" + (arr.length - shown).toLocaleString() + " left)";
-  if (!arr.length) $("list").innerHTML = '<p class="note">Nothing here.</p>';
+function render(){
+  var arr = lists[tab], pages = Math.max(1, Math.ceil(arr.length / size));
+  if (page >= pages) page = pages - 1;
+  var list = $("list"); list.innerHTML = "";
+  arr.slice(page * size, page * size + size).forEach(function(o){ list.appendChild(makeRow(o)) });
+  if (!arr.length) list.innerHTML = '<p class="note">Nothing here.</p>';
+  var pg = $("pager"); pg.innerHTML = "";
+  if (pages > 1) {
+    var prev = document.createElement("button"); prev.className = "btn alt small"; prev.type = "button"; prev.textContent = "\u2190 Previous"; prev.disabled = page === 0;
+    prev.onclick = function(){ page--; render(); list.scrollIntoView({behavior:"smooth", block:"start"}) };
+    var next = document.createElement("button"); next.className = "btn alt small"; next.type = "button"; next.textContent = "Next \u2192"; next.disabled = page >= pages - 1;
+    next.onclick = function(){ page++; render(); list.scrollIntoView({behavior:"smooth", block:"start"}) };
+    var info = document.createElement("span"); info.className = "note"; info.textContent = "Page " + (page + 1) + " of " + pages;
+    pg.appendChild(prev); pg.appendChild(info); pg.appendChild(next);
+  }
 }
-$("more").onclick = renderMore;
+$("size").onchange = function(){ size = parseInt($("size").value, 10); page = 0; render(); };
+function profileUrl(id){ return "https://x.com/i/user/" + id }
 
 function makeRow(o){
   var r = document.createElement("div"); r.className = "row" + (doneSet.has(o.id) ? " done" : "");
@@ -274,7 +340,7 @@ function makeRow(o){
     r.appendChild(c);
   }
   var s = document.createElement("span"); s.className = "id"; s.textContent = "ID " + o.id; r.appendChild(s);
-  var a = document.createElement("a"); a.className = "btn alt small"; a.href = o.link; a.target = "_blank"; a.rel = "noopener noreferrer"; a.textContent = "Open profile";
+  var a = document.createElement("a"); a.className = "btn alt small"; a.href = profileUrl(o.id); a.target = "_blank"; a.rel = "noopener noreferrer"; a.textContent = "Open profile";
   r.appendChild(a);
   return r;
 }
@@ -287,7 +353,7 @@ function updateTodo(){
 /* CSV */
 $("csv").onclick = function(){
   var names = {not:"not-following-back", fans:"fans-you-dont-follow", mutual:"mutuals"};
-  var rows = ["profile_link,account_id"].concat(lists[tab].map(function(o){return o.link + "," + o.id}));
+  var rows = ["profile_link,account_id"].concat(lists[tab].map(function(o){return profileUrl(o.id) + "," + o.id}));
   var blob = new Blob(["\ufeff" + rows.join("\r\n")], {type:"text/csv;charset=utf-8"});
   var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "x-" + names[tab] + ".csv";
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){URL.revokeObjectURL(a.href)}, 2000);
@@ -296,10 +362,10 @@ $("csv").onclick = function(){
 /* sharing */
 function shareText(){ return "My X follow-back rate is " + rate + "%. Check yours with this free tool that never leaves your browser:" }
 function setShare(){
-  $("shareX").href = "https://x.com/intent/post?text=" + encodeURIComponent(shareText()) + "&url=" + encodeURIComponent(SITE_URL);
+  $("shareX").href = "https://x.com/intent/post?text=" + encodeURIComponent(shareText()) + "&url=" + encodeURIComponent(SITE_URL) + "&hashtags=" + encodeURIComponent(HASHTAG) + "&via=" + encodeURIComponent(X_HANDLE);
   if (!navigator.share) $("shareNative").classList.add("hidden");
 }
-$("shareNative").onclick = function(){ navigator.share({title:"Who doesn't follow me back on X?", text:shareText(), url:SITE_URL}).catch(function(){}) };
+$("shareNative").onclick = function(){ navigator.share({title:"Who doesn't follow me back on X?", text:shareText() + " #" + HASHTAG + " via @" + X_HANDLE, url:SITE_URL}).catch(function(){}) };
 $("copy").onclick = function(){
   var b = $("copy");
   (navigator.clipboard ? navigator.clipboard.writeText(SITE_URL) : Promise.reject()).then(function(){b.textContent="Copied!"}, function(){b.textContent="Copy failed"});
