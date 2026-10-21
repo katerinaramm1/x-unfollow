@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Who doesn't follow me back on X?</title>
+<meta name="description" content="Free tool: upload your own X (Twitter) data archive and see who you follow that doesn't follow you back. Everything stays in your browser.">
+<style>
+  :root{--bg:#f6f7f9;--card:#fff;--text:#14171a;--muted:#5b6670;--accent:#1d9bf0;--accent-d:#1479bd;--line:#e1e5ea;--ok:#12805c;--warn:#b45309}
+  @media (prefers-color-scheme:dark){:root{--bg:#0f1419;--card:#192029;--text:#e7e9ea;--muted:#9aa5b0;--line:#2b3641;--accent:#4db3f6;--accent-d:#7cc7f8}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  .wrap{max-width:760px;margin:0 auto;padding:20px 16px 48px}
+  h1{font-size:1.7rem;margin:.3em 0 .2em}
+  h2{font-size:1.2rem;margin:0 0 .5em}
+  .sub{color:var(--muted);margin:0 0 1.2em}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin:14px 0}
+  ol{padding-left:1.2em;margin:.4em 0}
+  li{margin:.35em 0}
+  a{color:var(--accent-d)}
+  .btn{display:inline-block;border:1px solid var(--accent);background:var(--accent);color:#fff;border-radius:999px;padding:8px 16px;font:inherit;font-size:.95rem;cursor:pointer;text-decoration:none}
+  .btn.alt{background:transparent;color:var(--accent-d)}
+  .btn.small{padding:4px 12px;font-size:.85rem}
+  .btn:hover{filter:brightness(.95)}
+  .drop{border:2px dashed var(--line);border-radius:12px;padding:22px;text-align:center}
+  .drop.over{border-color:var(--accent)}
+  .note{font-size:.88rem;color:var(--muted)}
+  .err{color:#c0392b;font-weight:600}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+  .stat{border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .stat b{display:block;font-size:1.5rem}
+  .stat span{color:var(--muted);font-size:.85rem}
+  .bar{display:flex;height:26px;border-radius:8px;overflow:hidden;margin:12px 0 4px;background:var(--line)}
+  .bar div{height:100%}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.85rem;color:var(--muted)}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+  .tab{border:1px solid var(--line);background:transparent;color:var(--text);border-radius:999px;padding:6px 14px;font:inherit;font-size:.9rem;cursor:pointer}
+  .tab[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+  .row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+  .row.done .id{text-decoration:line-through;color:var(--muted)}
+  .row .id{flex:1;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.9rem;word-break:break-all}
+  .row input{width:18px;height:18px}
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+  .todo{font-weight:600;color:var(--warn)}
+  .hidden{display:none}
+  footer{text-align:center;color:var(--muted);margin-top:28px;font-size:.92rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Who doesn't follow me back on X?</h1>
+  <p class="sub">A free tool. Upload your own X data archive and see who you follow that doesn't follow you back. Your files never leave your device.</p>
+
+  <section class="card" id="how">
+    <h2>1. Get your archive from X</h2>
+    <ol>
+      <li>Open <a href="https://x.com/settings/download_your_data" target="_blank" rel="noopener">X &rarr; Settings and privacy &rarr; Your account &rarr; Download an archive of your data</a>. If the link doesn't open, go there through the Settings menu.</li>
+      <li>Confirm your identity and click <b>Request archive</b>.</li>
+      <li>X prepares it and notifies you. This can take a day or more.</li>
+      <li>Download the <b>.zip</b> file when it is ready.</li>
+    </ol>
+    <p class="note">The archive is a snapshot from the day you requested it, so results are "as of that day".</p>
+  </section>
+
+  <section class="card">
+    <h2>2. Upload it here</h2>
+    <div class="drop" id="drop">
+      <p style="margin:0 0 10px">Drop your <b>.zip</b> here, or choose it.<br><span class="note">Big archive, or the zip won't load? Unzip it and choose just <code>follower.js</code> and <code>following.js</code> from the <code>data</code> folder (select both together). They are tiny.</span></p>
+      <input type="file" id="file" accept=".zip,.js" multiple hidden>
+      <button class="btn" id="pick" type="button">Choose file(s)</button>
+    </div>
+    <p id="msg" class="note" aria-live="polite"></p>
+  </section>
+
+  <section class="card hidden" id="results">
+    <h2>3. Your results</h2>
+    <div class="stats">
+      <div class="stat"><b id="sFollowing">0</b><span>you follow</span></div>
+      <div class="stat"><b id="sFollowers">0</b><span>follow you</span></div>
+      <div class="stat"><b id="sRate">0%</b><span>follow-back rate</span></div>
+      <div class="stat"><b id="sNot">0</b><span>don't follow back</span></div>
+    </div>
+    <div class="bar" id="bar" aria-hidden="true"></div>
+    <div class="legend">
+      <span><i style="background:#12805c"></i>Mutuals <b id="lMut">0</b></span>
+      <span><i style="background:#d97706"></i>Not following you back <b id="lNot">0</b></span>
+      <span><i style="background:#1d9bf0"></i>Fans you don't follow <b id="lFan">0</b></span>
+    </div>
+    <p class="note">Follow-back rate = the share of the accounts you follow that follow you back.</p>
+
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" data-tab="not" aria-selected="true">Don't follow you back</button>
+      <button class="tab" role="tab" data-tab="fans" aria-selected="false">Fans you don't follow</button>
+      <button class="tab" role="tab" data-tab="mutual" aria-selected="false">Mutuals</button>
+    </div>
+    <div class="toolbar">
+      <span class="todo" id="todo"></span>
+      <button class="btn alt small" id="csv" type="button">Download CSV</button>
+    </div>
+    <p class="note" id="idNote">X's archive contains account IDs only, not usernames. Tap <b>Open profile</b> to see who it is on X, then unfollow there if you like. Tick the box once you've done it. This page never logs in to X or unfollows for you.</p>
+    <div id="list"></div>
+    <div style="margin-top:10px"><button class="btn alt small hidden" id="more" type="button">Show more</button></div>
+  </section>
+
+  <section class="card hidden" id="shareCard">
+    <h2>Share this tool</h2>
+    <p class="note">Shares the tool and your follow-back rate only. No accounts are included.</p>
+    <div class="toolbar">
+      <a class="btn small" id="shareX" target="_blank" rel="noopener" href="#">Post on X</a>
+      <button class="btn alt small" id="shareNative" type="button">Share&hellip;</button>
+      <button class="btn alt small" id="copy" type="button">Copy link</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Feedback</h2>
+    <p>Something missing or not working? Tell me what you think.</p>
+    <a class="btn" id="feedback" target="_blank" rel="noopener" href="#">Send feedback</a>
+  </section>
+
+  <section class="card" id="privacy">
+    <h2>Privacy</h2>
+    <p>Your archive is read and processed only in your browser. The files are not uploaded, saved or sent anywhere, and nothing is stored once you close or reload the page. The page does not ask for your X login or password.</p>
+    <p>The page counts visits with a simple, cookie-free visit counter that records page views only, never your files or results. Feedback is sent only if you choose to submit the feedback form, which is an outside service. Links to X and to the feedback form are outside links.</p>
+    <p class="note">This tool is independent and is not affiliated with or endorsed by X Corp.</p>
+  </section>
+
+  <footer>Created with love by @katerinaramm1 with the valuable help of Claude</footer>
+</div>
+
+<script>
+/* ===== Settings to fill in ===== */
+var SITE_URL       = "https://katerinaramm1.github.io/x-unfollow/";  // change to the real address
+var FEEDBACK_URL   = "https://forms.zohopublic.eu/katerinarammzoho1/form/YourFeedbackontheInstagramUnfollowApp/formperma/gP7CvSKHapc6O_GA5-PBBoAKGLjJx-MFsidYLYOYx_E";
+var GOATCOUNTER    = "katerinaramm";   // GoatCounter site code (katerinaramm.goatcounter.com)
+/* ================================= */
+
+var ZIPJS_SRC = "https://cdn.jsdelivr.net/npm/@zip.js/zip.js@2/dist/zip.min.js";
+var PAGE = 200;
+var data = {following: new Map(), follower: new Map()};
+var lists = {not: [], fans: [], mutual: []};
+var tab = "not", shown = 0, doneSet = new Set(), rate = 0;
+
+var $ = function(id){return document.getElementById(id)};
+
+/* visit counter (GoatCounter, no cookies) */
+if (GOATCOUNTER) {
+  var gc = document.createElement("script");
+  gc.async = true;
+  gc.src = "https://gc.zgo.at/count.js";
+  gc.setAttribute("data-goatcounter", "https://" + GOATCOUNTER + ".goatcounter.com/count");
+  document.head.appendChild(gc);
+}
+
+/* feedback link */
+if (FEEDBACK_URL) $("feedback").href = FEEDBACK_URL;
+else { $("feedback").classList.add("hidden"); }
+
+/* upload handling */
+$("pick").onclick = function(){$("file").click()};
+$("file").onchange = function(e){handle(e.target.files)};
+var drop = $("drop");
+["dragenter","dragover"].forEach(function(ev){drop.addEventListener(ev,function(e){e.preventDefault();drop.classList.add("over")})});
+["dragleave","drop"].forEach(function(ev){drop.addEventListener(ev,function(e){e.preventDefault();drop.classList.remove("over")})});
+drop.addEventListener("drop",function(e){handle(e.dataTransfer.files)});
+
+function say(t, bad){var m=$("msg"); m.textContent=t; m.className = bad ? "err" : "note"}
+
+function loadZipLib(){
+  return new Promise(function(res,rej){
+    if (window.zip) return res();
+    var s=document.createElement("script"); s.src=ZIPJS_SRC; s.onload=function(){ try{ zip.configure({useWebWorkers:false}) }catch(e){} res() };
+    s.onerror=function(){rej(new Error("Could not load the zip reader. Check your connection, or choose the two .js files instead."))};
+    document.head.appendChild(s);
+  });
+}
+
+function parseYtd(text, kind){
+  var i = text.indexOf("=");
+  var j = text.indexOf("[", i < 0 ? 0 : i);
+  if (j < 0) throw new Error("Unexpected file format.");
+  var arr = JSON.parse(text.slice(j));
+  arr.forEach(function(o){
+    var rec = o[kind] || o;
+    if (rec && rec.accountId) data[kind].set(String(rec.accountId), rec.userLink || ("https://twitter.com/intent/user?user_id=" + rec.accountId));
+  });
+}
+
+function kindOf(name){
+  var n = name.toLowerCase().split("/").pop();
+  if (/^follower.*\.js$/.test(n)) return "follower";
+  if (/^following.*\.js$/.test(n)) return "following";
+  return null;
+}
+
+async function handle(files){
+  data.following.clear(); data.follower.clear(); doneSet.clear();
+  say("Reading your file...");
+  try {
+    var items = [];
+    for (var f of Array.from(files)) {
+      if (/\.zip$/i.test(f.name)) {
+        await loadZipLib();
+        /* reads only the small list at the end of the zip, then only the two files we need,
+           so a 1GB archive is not loaded into memory */
+        var reader = new zip.ZipReader(new zip.BlobReader(f));
+        var entries = await reader.getEntries();
+        var wanted = entries.filter(function(en){return !en.directory && /(^|\/)data\/(follower|following)[^\/]*\.js$/i.test(en.filename)});
+        for (var en of wanted) items.push({kind: kindOf(en.filename), text: await en.getData(new zip.TextWriter())});
+        await reader.close();
+      } else if (kindOf(f.name)) {
+        items.push({kind: kindOf(f.name), text: await f.text()});
+      }
+    }
+    if (!items.length) throw new Error("I couldn't find follower.js and following.js. Please upload the .zip from X, or those two files.");
+    items.forEach(function(it){parseYtd(it.text, it.kind)});
+    if (!data.following.size || !data.follower.size) {
+      say("Only found " + (data.following.size ? "the following list" : "the followers list") + ". I need both follower.js and following.js.", true);
+      if (!data.following.size && !data.follower.size) return;
+      if (!data.following.size || !data.follower.size) return;
+    }
+    compute();
+    say("Done. " + data.following.size.toLocaleString() + " accounts you follow, " + data.follower.size.toLocaleString() + " followers.");
+  } catch(err){ say(err.message || "Something went wrong reading that file.", true) }
+}
+
+function compute(){
+  lists.not = []; lists.fans = []; lists.mutual = [];
+  data.following.forEach(function(link,id){ (data.follower.has(id) ? lists.mutual : lists.not).push({id:id,link:link}) });
+  data.follower.forEach(function(link,id){ if (!data.following.has(id)) lists.fans.push({id:id,link:link}) });
+  var fw = data.following.size;
+  rate = fw ? Math.round(lists.mutual.length / fw * 1000) / 10 : 0;
+  $("sFollowing").textContent = fw.toLocaleString();
+  $("sFollowers").textContent = data.follower.size.toLocaleString();
+  $("sRate").textContent = rate + "%";
+  $("sNot").textContent = lists.not.length.toLocaleString();
+  $("lMut").textContent = lists.mutual.length.toLocaleString();
+  $("lNot").textContent = lists.not.length.toLocaleString();
+  $("lFan").textContent = lists.fans.length.toLocaleString();
+  var total = lists.mutual.length + lists.not.length + lists.fans.length || 1;
+  $("bar").innerHTML = "";
+  [[lists.mutual.length,"#12805c"],[lists.not.length,"#d97706"],[lists.fans.length,"#1d9bf0"]].forEach(function(p){
+    var d=document.createElement("div"); d.style.width=(p[0]/total*100)+"%"; d.style.background=p[1]; $("bar").appendChild(d);
+  });
+  $("results").classList.remove("hidden"); $("shareCard").classList.remove("hidden");
+  setShare(); setTab("not");
+  $("results").scrollIntoView({behavior:"smooth"});
+}
+
+/* tabs and list */
+document.querySelectorAll(".tab").forEach(function(b){b.onclick=function(){setTab(b.dataset.tab)}});
+function setTab(t){
+  tab = t;
+  document.querySelectorAll(".tab").forEach(function(b){b.setAttribute("aria-selected", b.dataset.tab===t)});
+  $("list").innerHTML = ""; shown = 0; renderMore(); updateTodo();
+}
+function renderMore(){
+  var arr = lists[tab], end = Math.min(shown + PAGE, arr.length);
+  for (var i = shown; i < end; i++) $("list").appendChild(makeRow(arr[i]));
+  shown = end;
+  $("more").classList.toggle("hidden", shown >= arr.length);
+  $("more").textContent = "Show more (" + (arr.length - shown).toLocaleString() + " left)";
+  if (!arr.length) $("list").innerHTML = '<p class="note">Nothing here.</p>';
+}
+$("more").onclick = renderMore;
+
+function makeRow(o){
+  var r = document.createElement("div"); r.className = "row" + (doneSet.has(o.id) ? " done" : "");
+  if (tab === "not") {
+    var c = document.createElement("input"); c.type = "checkbox"; c.checked = doneSet.has(o.id);
+    c.setAttribute("aria-label","Mark as unfollowed");
+    c.onchange = function(){ c.checked ? doneSet.add(o.id) : doneSet.delete(o.id); r.classList.toggle("done", c.checked); updateTodo() };
+    r.appendChild(c);
+  }
+  var s = document.createElement("span"); s.className = "id"; s.textContent = "ID " + o.id; r.appendChild(s);
+  var a = document.createElement("a"); a.className = "btn alt small"; a.href = o.link; a.target = "_blank"; a.rel = "noopener noreferrer"; a.textContent = "Open profile";
+  r.appendChild(a);
+  return r;
+}
+function updateTodo(){
+  var t = $("todo");
+  if (tab === "not") t.textContent = (lists.not.length - doneSet.size).toLocaleString() + " left to do";
+  else t.textContent = "";
+}
+
+/* CSV */
+$("csv").onclick = function(){
+  var names = {not:"not-following-back", fans:"fans-you-dont-follow", mutual:"mutuals"};
+  var rows = ["profile_link,account_id"].concat(lists[tab].map(function(o){return o.link + "," + o.id}));
+  var blob = new Blob(["\ufeff" + rows.join("\r\n")], {type:"text/csv;charset=utf-8"});
+  var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "x-" + names[tab] + ".csv";
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){URL.revokeObjectURL(a.href)}, 2000);
+};
+
+/* sharing */
+function shareText(){ return "My X follow-back rate is " + rate + "%. Check yours with this free tool that never leaves your browser:" }
+function setShare(){
+  $("shareX").href = "https://x.com/intent/post?text=" + encodeURIComponent(shareText()) + "&url=" + encodeURIComponent(SITE_URL);
+  if (!navigator.share) $("shareNative").classList.add("hidden");
+}
+$("shareNative").onclick = function(){ navigator.share({title:"Who doesn't follow me back on X?", text:shareText(), url:SITE_URL}).catch(function(){}) };
+$("copy").onclick = function(){
+  var b = $("copy");
+  (navigator.clipboard ? navigator.clipboard.writeText(SITE_URL) : Promise.reject()).then(function(){b.textContent="Copied!"}, function(){b.textContent="Copy failed"});
+  setTimeout(function(){b.textContent="Copy link"}, 1800);
+};
+</script>
+</body>
+</html>
