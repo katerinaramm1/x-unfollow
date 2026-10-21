@@ -59,6 +59,8 @@
   .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
   .todo{font-weight:600;color:var(--warn)}
   .hidden{display:none}
+  details.card summary{cursor:pointer;font-weight:600;font-size:1.05rem}
+  details.card[open] summary{margin-bottom:.6em}
   footer{text-align:center;color:var(--muted);margin-top:28px;font-size:.92rem}
 </style>
 </head>
@@ -90,11 +92,13 @@
       <input type="file" id="file" accept=".zip,.js" multiple hidden>
       <button class="btn" id="pick" type="button">Choose file(s)</button>
     </div>
+    <p class="note" style="margin:.8em 0 0">No archive yet? <button class="btn alt small" id="demoBtn" type="button">Try it with demo data</button> It uses made-up accounts, so you can see how the tool works.</p>
     <p id="msg" class="note" aria-live="polite"></p>
   </section>
 
   <section class="card hidden" id="results">
     <h2>3. Your results</h2>
+    <p class="note hidden" id="demoNote"><b>Demo data.</b> These accounts are made up, so their profile buttons don't open anything. Upload your own archive to see your real results.</p>
     <div class="stats">
       <div class="stat"><b id="sFollowing">0</b><span>you follow</span></div>
       <div class="stat"><b id="sFollowers">0</b><span>follow you</span></div>
@@ -118,7 +122,7 @@
       <label class="note">Show <select id="size"><option value="20" selected>20</option><option value="50">50</option><option value="100">100</option></select> per page</label>
       <button class="btn alt small" id="csv" type="button">Download CSV</button>
     </div>
-    <p class="note" id="idNote">X's archive contains account IDs only, not usernames. Tap <b>Open profile</b> to go straight to that person's profile on X, then use the <b>Following</b> button there to unfollow. When you tap <b>Open profile</b>, the account is crossed out and a short pause starts, so you don't act too fast on X. Use <b>Undo</b> if you opened it by mistake, or <b>Not following</b> if you were no longer following that account. This page never logs in to X or unfollows for you.</p>
+    <p class="note" id="idNote">X's archive contains account IDs only, not usernames. Tap <b>Open profile</b> to go straight to that person's profile on X, then use the <b>Following</b> button there to unfollow. When you tap <b>Open profile</b>, the profile opens straight away and the account is crossed out. The timer below shows how long it has been since your last click; wait for it to say <b>Ready</b> before the next one, so you don't act too fast on X. Use <b>Undo</b> if you opened it by mistake, or <b>Not following</b> if you were no longer following that account. This page never logs in to X or unfollows for you.</p>
     <div class="panel hidden" id="panel">
       <div><div class="lbl">Since last click</div><div class="clock" id="clock">00:00</div></div>
       <span class="pill ready" id="pill">Ready</span>
@@ -146,18 +150,18 @@
     <a class="btn" id="feedback" target="_blank" rel="noopener" href="#">Send feedback</a>
   </section>
 
-  <section class="card" id="privacy">
-    <h2>Privacy</h2>
-    <p>Your archive is read and processed only in your browser. The files are not uploaded, saved or sent anywhere, and nothing is stored once you close or reload the page. The page does not ask for your X login or password.</p>
-    <p>The page counts visits with a simple, cookie-free visit counter that records page views only, never your files or results. The total shown at the bottom of the page comes from that counter. Feedback is sent only if you choose to submit the feedback form, which is an outside service. Links to X and to the feedback form are outside links.</p>
-    <p class="note">This tool is independent and is not affiliated with or endorsed by X Corp.</p>
-  </section>
-
   <section class="card">
     <h2>Also on Instagram</h2>
     <p>Want the same check for Instagram? Try the Instagram unfollow tool.</p>
     <a class="btn" href="https://katerinaramm1.github.io/insta-unfollow/" target="_blank" rel="noopener">Open the Instagram tool</a>
   </section>
+
+  <details class="card" id="privacy">
+    <summary>Privacy <span class="note">(click to read)</span></summary>
+    <p>Your archive is read and processed only in your browser. The files are not uploaded, saved or sent anywhere, and nothing is stored once you close or reload the page. The page does not ask for your X login or password.</p>
+    <p>The page counts visits with a simple, cookie-free visit counter that records page views only, never your files or results. The total shown at the bottom of the page comes from that counter. Feedback is sent only if you choose to submit the feedback form, which is an outside service. Links to X and to the feedback form are outside links.</p>
+    <p class="note">This tool is independent and is not affiliated with or endorsed by X Corp.</p>
+  </details>
 
   <footer>
     <p><a href="https://x.com/katerinaramm1" target="_blank" rel="noopener">Follow @katerinaramm1 on X</a></p>
@@ -180,7 +184,7 @@ var ZIPJS_SRC = "https://cdn.jsdelivr.net/npm/@zip.js/zip.js@2/dist/zip.min.js";
 var size = 20, page = 0;
 var data = {following: new Map(), follower: new Map()};
 var lists = {not: [], fans: [], mutual: []};
-var tab = "not", shown = 0, doneSet = new Set(), marks = new Map(), rate = 0;
+var tab = "not", shown = 0, doneSet = new Set(), marks = new Map(), rate = 0, demo = false;
 
 var $ = function(id){return document.getElementById(id)};
 
@@ -299,10 +303,23 @@ async function handle(files){
       if (!data.following.size && !data.follower.size) return;
       if (!data.following.size || !data.follower.size) return;
     }
+    demo = false;
     compute();
     say("Done. " + data.following.size.toLocaleString() + " accounts you follow, " + data.follower.size.toLocaleString() + " followers.");
   } catch(err){ say(err.message || "Something went wrong reading that file.", true) }
 }
+
+/* demo data: made-up accounts so people can try the tool before their archive arrives */
+function loadDemo(){
+  data.following.clear(); data.follower.clear(); doneSet.clear(); marks.clear(); resetClock();
+  for (var i = 1; i <= 90; i++) data.following.set("demo-" + i, "#");
+  for (var j = 1; j <= 90; j++) if (j % 3 !== 0) data.follower.set("demo-" + j, "#");
+  for (var k = 101; k <= 115; k++) data.follower.set("demo-" + k, "#");
+  demo = true;
+  compute();
+  say("Demo loaded: made-up accounts, not real data.");
+}
+$("demoBtn").onclick = loadDemo;
 
 function compute(){
   lists.not = []; lists.fans = []; lists.mutual = [];
@@ -322,7 +339,7 @@ function compute(){
   [[lists.mutual.length,"#12805c"],[lists.not.length,"#d97706"],[lists.fans.length,"#1d9bf0"]].forEach(function(p){
     var d=document.createElement("div"); d.style.width=(p[0]/total*100)+"%"; d.style.background=p[1]; $("bar").appendChild(d);
   });
-  $("results").classList.remove("hidden"); $("shareCard").classList.remove("hidden");
+  $("results").classList.remove("hidden"); $("shareCard").classList.toggle("hidden", demo); $("demoNote").classList.toggle("hidden", !demo);
   setShare(); setTab("not");
   $("results").scrollIntoView({behavior:"smooth"});
 }
@@ -340,7 +357,7 @@ function render(){
   var list = $("list"); list.innerHTML = "";
   arr.slice(page * size, page * size + size).forEach(function(o, i){ list.appendChild(makeRow(o, page * size + i)) });
   if (!arr.length) list.innerHTML = '<p class="note">Nothing here.</p>';
-  applyWait(); updateTodo();
+  updateTodo();
   var pg = $("pager"); pg.innerHTML = "";
   if (pages > 1) {
     var prev = document.createElement("button"); prev.className = "btn alt small"; prev.type = "button"; prev.textContent = "\u2190 Previous"; prev.disabled = page === 0;
@@ -362,7 +379,7 @@ function makeRow(o, idx){
   var r = document.createElement("div");
   r.className = "row" + (tab === "not" && st ? (st.k === "skip" ? " skip" : " done") : "");
   var n = document.createElement("span"); n.className = "num"; n.textContent = idx + 1; r.appendChild(n);
-  var s = document.createElement("span"); s.className = "id"; s.textContent = "ID " + o.id; r.appendChild(s);
+  var s = document.createElement("span"); s.className = "id"; s.textContent = demo ? "@demo_user_" + String(o.id).replace("demo-", "") : "ID " + o.id; r.appendChild(s);
   if (tab === "not" && st) {
     var m = document.createElement("span"); m.className = "meta";
     m.textContent = st.k === "skip" ? "Not following" : "Clicked " + st.t; r.appendChild(m);
@@ -370,13 +387,13 @@ function makeRow(o, idx){
     if (st.k === "done") r.appendChild(rowBtn("Not following", function(){ marks.set(o.id, {k:"skip", t:st.t}); render(); }));
     return r;
   }
-  var a = document.createElement("a"); a.className = "btn alt small"; a.href = profileUrl(o.id); a.target = "_blank"; a.rel = "noopener noreferrer"; a.textContent = "Open profile";
+  var a = document.createElement("a"); a.className = "btn alt small"; a.href = demo ? "#" : profileUrl(o.id); a.target = "_blank"; a.rel = "noopener noreferrer"; a.textContent = "Open profile";
   if (tab === "not") a.classList.add("open");
   /* tapping Open profile marks the account as clicked and starts the pause */
   a.onclick = a.onauxclick = function(e){
     if (e.type === "auxclick" && e.button !== 1) return;   /* only middle-click, not right-click */
+    if (demo) e.preventDefault();   /* demo accounts are made up: open nothing */
     if (tab !== "not") return;
-    if (Date.now() < waitUntil) { e.preventDefault(); return; }   /* still waiting */
     marks.set(o.id, {k:"done", t:nowTime()}); doneSet.add(o.id); startWait();
     setTimeout(render, 80);   /* redraw after the link has opened */
   };
@@ -398,20 +415,12 @@ function updateTodo(){
 
 /* pause after each "Open profile" click in the not-following-back list */
 var waitUntil = 0, waitSecs = 0, lastClick = 0, ticker = null;
-function applyWait(){
-  var left = Math.ceil((waitUntil - Date.now()) / 1000);
-  document.querySelectorAll("a.open").forEach(function(a){
-    if (left > 0) { a.classList.add("disabled"); a.setAttribute("aria-disabled", "true"); a.textContent = "Wait " + left + "s"; }
-    else { a.classList.remove("disabled"); a.removeAttribute("aria-disabled"); a.textContent = "Open profile"; }
-  });
-}
 function tick(){
   if (!lastClick) return;
   var el = Math.floor((Date.now() - lastClick) / 1000), ready = Date.now() >= waitUntil, pill = $("pill");
   $("clock").textContent = pad2(Math.floor(el / 60)) + ":" + pad2(el % 60);
   pill.textContent = ready ? "Ready" : "Wait " + waitSecs + " s";
   pill.classList.toggle("ready", ready);
-  applyWait();
 }
 function startWait(){
   lastClick = Date.now();
