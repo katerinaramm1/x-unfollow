@@ -6,8 +6,13 @@
 <title>Who doesn't follow me back on X?</title>
 <meta name="description" content="Free tool: upload your own X (Twitter) data archive and see who you follow that doesn't follow you back. Everything stays in your browser.">
 <style>
-  :root{--bg:#f6f7f9;--card:#fff;--text:#14171a;--muted:#5b6670;--accent:#1d9bf0;--accent-d:#1479bd;--line:#e1e5ea;--ok:#12805c;--warn:#b45309}
-  @media (prefers-color-scheme:dark){:root{--bg:#0f1419;--card:#192029;--text:#e7e9ea;--muted:#9aa5b0;--line:#2b3641;--accent:#4db3f6;--accent-d:#7cc7f8}}
+  :root{color-scheme:light;--bg:#f6f7f9;--card:#fff;--text:#0f1419;--muted:#5b6670;--accent:#0f1419;--accent-d:#0f1419;--on-accent:#fff;--line:#e1e5ea;--ok:#12805c;--warn:#b45309}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#000;--card:#16181c;--text:#e7e9ea;--muted:#8b98a5;--line:#2f3336;--accent:#e7e9ea;--accent-d:#e7e9ea;--on-accent:#0f1419;--ok:#2fd09a;--warn:#f5a524}}
+  :root[data-theme="dark"]{color-scheme:dark;--bg:#000;--card:#16181c;--text:#e7e9ea;--muted:#8b98a5;--line:#2f3336;--accent:#e7e9ea;--accent-d:#e7e9ea;--on-accent:#0f1419;--ok:#2fd09a;--warn:#f5a524}
+  .themebar{display:flex;justify-content:flex-end;gap:4px;margin:0 0 4px}
+  .themebar button{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:999px;padding:3px 12px;font:inherit;font-size:.8rem;cursor:pointer}
+  .themebar button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+  #shareCanvas{width:100%;height:auto;border-radius:12px;border:1px solid var(--line);display:block;margin:8px 0}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
   .wrap{max-width:760px;margin:0 auto;padding:20px 16px 48px}
@@ -18,7 +23,7 @@
   ol{padding-left:1.2em;margin:.4em 0}
   li{margin:.35em 0}
   a{color:var(--accent-d)}
-  .btn{display:inline-block;border:1px solid var(--accent);background:var(--accent);color:#fff;border-radius:999px;padding:8px 16px;font:inherit;font-size:.95rem;cursor:pointer;text-decoration:none}
+  .btn{display:inline-block;border:1px solid var(--accent);background:var(--accent);color:var(--on-accent);border-radius:999px;padding:8px 16px;font:inherit;font-size:.95rem;cursor:pointer;text-decoration:none}
   .btn.alt{background:transparent;color:var(--accent-d)}
   .btn.small{padding:4px 12px;font-size:.85rem}
   .btn:hover{filter:brightness(.95)}
@@ -37,7 +42,7 @@
   .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px}
   .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
   .tab{border:1px solid var(--line);background:transparent;color:var(--text);border-radius:999px;padding:6px 14px;font:inherit;font-size:.9rem;cursor:pointer}
-  .tab[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+  .tab[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
   .row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
   .row{flex-wrap:wrap;padding:8px 10px;border-radius:10px}
   .row.done{background:rgba(18,128,92,.12)}
@@ -66,6 +71,7 @@
 </head>
 <body>
 <div class="wrap">
+  <div class="themebar" role="group" aria-label="Colour theme"><button type="button" data-theme-set="auto" aria-pressed="true">Auto</button><button type="button" data-theme-set="light" aria-pressed="false">Light</button><button type="button" data-theme-set="dark" aria-pressed="false">Dark</button></div>
   <h1>Who doesn't follow me back on X?</h1>
   <p class="sub">A free tool. Upload your own X data archive and see who you follow that doesn't follow you back. Your files never leave your device.</p>
 
@@ -109,7 +115,7 @@
     <div class="legend">
       <span><i style="background:#12805c"></i>Mutuals <b id="lMut">0</b></span>
       <span><i style="background:#d97706"></i>Not following you back <b id="lNot">0</b></span>
-      <span><i style="background:#1d9bf0"></i>Fans you don't follow <b id="lFan">0</b></span>
+      <span><i style="background:#71767b"></i>Fans you don't follow <b id="lFan">0</b></span>
     </div>
     <p class="note">Follow-back rate = the share of the accounts you follow that follow you back.</p>
 
@@ -117,26 +123,53 @@
       <button class="tab" role="tab" data-tab="not" aria-selected="true">Don't follow you back</button>
       <button class="tab" role="tab" data-tab="fans" aria-selected="false">Fans you don't follow</button>
       <button class="tab" role="tab" data-tab="mutual" aria-selected="false">Mutuals</button>
+      <button class="tab" role="tab" data-tab="done" aria-selected="false">Done</button>
     </div>
     <div class="toolbar">
-      <label class="note">Show <select id="size"><option value="20" selected>20</option><option value="50">50</option><option value="100">100</option></select> per page</label>
+      <label class="note">Show <select id="size"><option value="20" selected>20</option><option value="50">50</option><option value="100">100</option><option value="500">500</option></select> per page</label>
       <button class="btn alt small" id="csv" type="button">Download CSV</button>
+      <button class="btn alt small" id="clearSaved" type="button">Clear saved progress</button>
     </div>
-    <p class="note" id="idNote">X's archive contains account IDs only, not usernames. Tap <b>Open profile</b> to go straight to that person's profile on X, then use the <b>Following</b> button there to unfollow. When you tap <b>Open profile</b>, the profile opens straight away and the account is crossed out. The timer below shows how long it has been since your last click; wait for it to say <b>Ready</b> before the next one, so you don't act too fast on X. Use <b>Undo</b> if you opened it by mistake, or <b>Not following</b> if you were no longer following that account. This page never logs in to X or unfollows for you.</p>
+    <p class="note" id="idNote">X's archive contains account IDs only, not usernames. Tap <b>Open profile</b> to go straight to that person's profile on X, then use the <b>Following</b> button there to unfollow. When you tap <b>Open profile</b>, the profile opens straight away and the account moves to the <b>Done</b> tab, so this list always starts with the next account to do. The timer below shows how long it has been since your last click; wait for it to say <b>Ready</b> before the next one, so you don't act too fast on X. In the Done tab, use <b>Undo</b> if you opened it by mistake, or <b>Not following</b> if you were no longer following that account. This page never logs in to X or unfollows for you.</p>
     <div class="panel hidden" id="panel">
       <div><div class="lbl">Since last click</div><div class="clock" id="clock">00:00</div></div>
       <span class="pill ready" id="pill">Ready</span>
       <div class="grow"><div class="bar" id="prog" style="height:10px;margin:0" aria-hidden="true"></div></div>
       <div class="pcount" id="pcount"></div>
       <div class="note remaining" id="remaining"></div>
+      <button class="btn alt small" id="finishBtn" type="button">I'm done for now: share</button>
     </div>
     <div id="list"></div>
     <div class="toolbar" id="pager" style="margin-top:10px"></div>
   </section>
 
+  <section class="card hidden" id="doneCard">
+    <h2 id="doneTitle">&#127881; Well done!</h2>
+    <p id="doneText"></p>
+    <div id="doneShareBox">
+      <p class="note" id="donePreview" style="margin:.2em 0 .6em"></p>
+      <div class="toolbar">
+        <a class="btn small" id="doneX" target="_blank" rel="noopener" href="#">Post on X</a>
+        <button class="btn alt small" id="doneNative" type="button">Share&hellip;</button>
+        <button class="btn alt small" id="doneCopy" type="button">Copy text</button>
+      </div>
+    </div>
+    <p style="margin:1em 0 .3em"><b>Come back in 3 months</b> and check again (<span id="r3when"></span>):</p>
+    <div class="toolbar">
+      <button class="btn small" id="r3Google" type="button">Google Calendar</button>
+      <button class="btn alt small" id="r3Ics" type="button">Apple / Outlook / phone (.ics file)</button>
+    </div>
+    <p class="note">When the reminder comes, request a new archive from X first (it takes about a day), then upload it here.</p>
+  </section>
+
   <section class="card hidden" id="shareCard">
     <h2>Share this tool</h2>
-    <p class="note">Shares the tool and your follow-back rate only. No accounts are included.</p>
+    <p class="note">A picture of your numbers only. No accounts or IDs are included. X does not let websites attach pictures to a post, so save the image first, then add it to your post.</p>
+    <canvas id="shareCanvas" width="1600" height="900" role="img" aria-label="Share image with your follow-back numbers"></canvas>
+    <div class="toolbar">
+      <button class="btn small" id="saveImg" type="button">Save image</button>
+      <button class="btn alt small hidden" id="shareImg" type="button">Share image&hellip;</button>
+    </div>
     <div class="toolbar">
       <a class="btn small" id="shareX" target="_blank" rel="noopener" href="#">Post on X</a>
       <button class="btn alt small" id="shareNative" type="button">Share&hellip;</button>
@@ -147,6 +180,7 @@
   <section class="card">
     <h2>Feedback</h2>
     <p>Something missing or not working? Tell me what you think.</p>
+    <div id="askletBox" class="hidden" style="margin:0 0 14px"></div>
     <a class="btn" id="feedback" target="_blank" rel="noopener" href="#">Send feedback</a>
   </section>
 
@@ -156,10 +190,19 @@
     <a class="btn" href="https://katerinaramm1.github.io/insta-unfollow/" target="_blank" rel="noopener">Open the Instagram tool</a>
   </section>
 
+  <section class="card">
+    <h2>Also on LinkedIn</h2>
+    <p>LinkedIn has no "follow back" to check, because connections are mutual. The LinkedIn tool instead shows which invitations you sent were never accepted, who you have gone quiet with, and how your network grew.</p>
+    <div class="toolbar">
+      <a class="btn" id="liTool" href="#" target="_blank" rel="noopener">Open the LinkedIn tool</a>
+    </div>
+  </section>
+
   <details class="card" id="privacy">
     <summary>Privacy <span class="note">(click to read)</span></summary>
-    <p>Your archive is read and processed only in your browser. The files are not uploaded, saved or sent anywhere, and nothing is stored once you close or reload the page. The page does not ask for your X login or password.</p>
-    <p>The page counts visits with a simple, cookie-free visit counter that records page views only, never your files or results. The total shown at the bottom of the page comes from that counter. Feedback is sent only if you choose to submit the feedback form, which is an outside service. Links to X and to the feedback form are outside links.</p>
+    <p>Your archive is read and processed only in your browser. The files are not uploaded, saved or sent anywhere, and nothing from them is sent anywhere. The page does not ask for your X login or password.</p>
+    <p>To keep your progress between visits, the page saves which accounts you have clicked, with the date and time, in your browser's own storage on your device. It is never sent anywhere, you can erase it at any time with the "Clear saved progress" button. Your light or dark choice is saved the same way.</p>
+    <p>The page counts visits with a simple, cookie-free visit counter that records page views only, never your files or results. The total shown at the bottom of the page comes from that counter. Feedback is sent only if you choose to submit the feedback form, which is an outside service. <span id="askletNote" class="hidden">The quick feedback question above is provided by Asklet, an outside service; its page says it sets no cookies and answers are anonymous. </span>Links to X, the other tools and the feedback form are outside links.</p>
     <p class="note">This tool is independent and is not affiliated with or endorsed by X Corp.</p>
   </details>
 
@@ -170,12 +213,30 @@
 </div>
 
 <script>
+/* light / dark choice (saved on this device only) */
+(function(){
+  var KEY = "xunf-theme";
+  function apply(mode){
+    if (mode === "light" || mode === "dark") document.documentElement.setAttribute("data-theme", mode);
+    else document.documentElement.removeAttribute("data-theme");
+    document.querySelectorAll("[data-theme-set]").forEach(function(b){ b.setAttribute("aria-pressed", b.getAttribute("data-theme-set") === (mode === "light" || mode === "dark" ? mode : "auto")) });
+  }
+  var saved = "auto";
+  try { saved = localStorage.getItem(KEY) || "auto" } catch(e) {}
+  apply(saved);
+  document.querySelectorAll("[data-theme-set]").forEach(function(b){
+    b.onclick = function(){ var m = b.getAttribute("data-theme-set"); apply(m); try { localStorage.setItem(KEY, m) } catch(e) {} };
+  });
+})();
+
 /* ===== Settings to fill in ===== */
 var SITE_URL       = "https://katerinaramm1.github.io/x-unfollow/";  // change to the real address
 var FEEDBACK_URL   = "https://forms.zohopublic.eu/katerinarammzoho1/form/YourFeedbackontheInstagramUnfollowApp/formperma/gP7CvSKHapc6O_GA5-PBBoAKGLjJx-MFsidYLYOYx_E";
+var LINKEDIN_TOOL  = "https://katerinaramm1.github.io/linkedin-unfollow/";   // the LinkedIn tool (planned address)
+var ASKLET_EMBED   = "https://asklet.io/embed/s/7d737726-6b4d-49c3-8b99-174951dc7cb9";   // quick feedback question (free plan at asklet.io): paste the iframe src from its dashboard, e.g. https://asklet.io/embed/s/YOUR-SITE-ID
 var GOATCOUNTER    = "katerinaramm";   // GoatCounter site code (katerinaramm.goatcounter.com)
 var HASHTAG        = "XFollowBackCheck";  // hashtag added to shared posts (no # sign)
-var X_HANDLE       = "katerinaramm1";     // credited in shared posts as "via @katerinaramm1"
+var X_HANDLE       = "katerinaramm1";     // credited in shared posts and on the share image
 var REMIND_HOURS   = 30;                  // reminder to come back for the archive
 var WAIT_MIN = 12, WAIT_MAX = 25;         // pause (seconds) after each "Open profile" click; a value in this range is picked each time
 /* ================================= */
@@ -184,7 +245,7 @@ var ZIPJS_SRC = "https://cdn.jsdelivr.net/npm/@zip.js/zip.js@2/dist/zip.min.js";
 var size = 20, page = 0;
 var data = {following: new Map(), follower: new Map()};
 var lists = {not: [], fans: [], mutual: []};
-var tab = "not", shown = 0, doneSet = new Set(), marks = new Map(), rate = 0, demo = false;
+var notById = new Map(), tab = "not", shown = 0, doneSet = new Set(), marks = new Map(), rate = 0, demo = false, doneManual = false;
 
 var $ = function(id){return document.getElementById(id)};
 
@@ -236,6 +297,19 @@ $("remIcs").onclick = function(){
   showRemindTime();
 };
 
+/* quick feedback question (Asklet), shown only when ASKLET_EMBED is filled in */
+if (ASKLET_EMBED) {
+  var fr = document.createElement("iframe");
+  fr.src = ASKLET_EMBED; fr.title = "Your feedback"; fr.loading = "lazy";
+  fr.setAttribute("referrerpolicy", "unsafe-url");   /* Asklet needs the page address to show the question */
+  fr.style.cssText = "border:0;width:100%;height:480px";
+  $("askletBox").appendChild(fr); $("askletBox").classList.remove("hidden");
+  $("askletNote").classList.remove("hidden");
+}
+
+/* link to the LinkedIn tool */
+$("liTool").href = LINKEDIN_TOOL;
+
 /* feedback link */
 if (FEEDBACK_URL) $("feedback").href = FEEDBACK_URL;
 else { $("feedback").classList.add("hidden"); }
@@ -278,7 +352,7 @@ function kindOf(name){
 }
 
 async function handle(files){
-  data.following.clear(); data.follower.clear(); doneSet.clear(); marks.clear(); resetClock();
+  data.following.clear(); data.follower.clear(); doneSet.clear(); marks.clear(); resetClock(); doneManual = false; hideDone();
   say("Reading your file...");
   try {
     var items = [];
@@ -305,13 +379,13 @@ async function handle(files){
     }
     demo = false;
     compute();
-    say("Done. " + data.following.size.toLocaleString() + " accounts you follow, " + data.follower.size.toLocaleString() + " followers.");
+    say((restoredN ? "Welcome back: your saved progress is restored (" + restoredN.toLocaleString() + " accounts done). " : "Done. ") + data.following.size.toLocaleString() + " accounts you follow, " + data.follower.size.toLocaleString() + " followers.");
   } catch(err){ say(err.message || "Something went wrong reading that file.", true) }
 }
 
 /* demo data: made-up accounts so people can try the tool before their archive arrives */
 function loadDemo(){
-  data.following.clear(); data.follower.clear(); doneSet.clear(); marks.clear(); resetClock();
+  data.following.clear(); data.follower.clear(); doneSet.clear(); marks.clear(); resetClock(); doneManual = false; hideDone();
   for (var i = 1; i <= 90; i++) data.following.set("demo-" + i, "#");
   for (var j = 1; j <= 90; j++) if (j % 3 !== 0) data.follower.set("demo-" + j, "#");
   for (var k = 101; k <= 115; k++) data.follower.set("demo-" + k, "#");
@@ -325,6 +399,11 @@ function compute(){
   lists.not = []; lists.fans = []; lists.mutual = [];
   data.following.forEach(function(link,id){ (data.follower.has(id) ? lists.mutual : lists.not).push({id:id,link:link}) });
   data.follower.forEach(function(link,id){ if (!data.following.has(id)) lists.fans.push({id:id,link:link}) });
+  lists.not.forEach(function(o, i){ o.n = i + 1 });   /* stable number, so an account keeps its number when it moves to Done */
+  notById = new Map(); lists.not.forEach(function(o){ notById.set(o.id, o) });
+  var fk = Array.from(data.following.keys());
+  sig = data.following.size + ":" + data.follower.size + ":" + (fk[0] || "") + ":" + (fk[fk.length - 1] || "");
+  restoreProgress();
   var fw = data.following.size;
   rate = fw ? Math.round(lists.mutual.length / fw * 1000) / 10 : 0;
   $("sFollowing").textContent = fw.toLocaleString();
@@ -336,10 +415,10 @@ function compute(){
   $("lFan").textContent = lists.fans.length.toLocaleString();
   var total = lists.mutual.length + lists.not.length + lists.fans.length || 1;
   $("bar").innerHTML = "";
-  [[lists.mutual.length,"#12805c"],[lists.not.length,"#d97706"],[lists.fans.length,"#1d9bf0"]].forEach(function(p){
+  [[lists.mutual.length,"#12805c"],[lists.not.length,"#d97706"],[lists.fans.length,"#71767b"]].forEach(function(p){
     var d=document.createElement("div"); d.style.width=(p[0]/total*100)+"%"; d.style.background=p[1]; $("bar").appendChild(d);
   });
-  $("results").classList.remove("hidden"); $("shareCard").classList.toggle("hidden", demo); $("demoNote").classList.toggle("hidden", !demo);
+  $("results").classList.remove("hidden"); $("shareCard").classList.toggle("hidden", demo); $("clearSaved").classList.toggle("hidden", demo); $("demoNote").classList.toggle("hidden", !demo);
   setShare(); setTab("not");
   $("results").scrollIntoView({behavior:"smooth"});
 }
@@ -351,12 +430,21 @@ function setTab(t){
   document.querySelectorAll(".tab").forEach(function(b){b.setAttribute("aria-selected", b.dataset.tab===t)});
   page = 0; render(); updateTodo();
 }
+/* the list shown in each tab: "not" only holds accounts still to do; "done" holds the clicked ones, newest first */
+function listFor(t){
+  if (t === "not") return lists.not.filter(function(o){ return !marks.has(o.id) });
+  if (t === "done") {
+    var ids = Array.from(marks.keys()).reverse();
+    return ids.map(function(id){ return notById.get(id) }).filter(Boolean);
+  }
+  return lists[t];
+}
 function render(){
-  var arr = lists[tab], pages = Math.max(1, Math.ceil(arr.length / size));
+  var arr = listFor(tab), pages = Math.max(1, Math.ceil(arr.length / size));
   if (page >= pages) page = pages - 1;
   var list = $("list"); list.innerHTML = "";
   arr.slice(page * size, page * size + size).forEach(function(o, i){ list.appendChild(makeRow(o, page * size + i)) });
-  if (!arr.length) list.innerHTML = '<p class="note">Nothing here.</p>';
+  if (!arr.length) list.innerHTML = '<p class="note">' + (tab === "not" && lists.not.length ? "All done here. Check the Done tab." : tab === "done" ? "Accounts you open will appear here." : "Nothing here.") + '</p>';
   updateTodo();
   var pg = $("pager"); pg.innerHTML = "";
   if (pages > 1) {
@@ -371,20 +459,51 @@ function render(){
 $("size").onchange = function(){ size = parseInt($("size").value, 10); page = 0; render(); };
 function profileUrl(id){ return "https://x.com/i/user/" + id }
 
+/* ===== saved progress (this device only, in the browser's own storage) ===== */
+var STORE_KEY = "xunf-progress-v1", sig = "", restoredN = 0;
+function today(){ return ymd(new Date()) }
+function saveProgress(){
+  if (demo || !sig) return;
+  try {
+    var arr = [];
+    marks.forEach(function(m, id){ arr.push([id, m.k, m.t, m.d]) });
+    localStorage.setItem(STORE_KEY, JSON.stringify({sig: sig, marks: arr}));
+  } catch(e) {}
+}
+function restoreProgress(){
+  restoredN = 0;
+  if (demo) return;
+  try {
+    var raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return;
+    var saved = JSON.parse(raw);
+    if (!saved || saved.sig !== sig || !Array.isArray(saved.marks)) return;
+    saved.marks.forEach(function(m){
+      if (notById.has(m[0])) { marks.set(m[0], {k: m[1], t: m[2], d: m[3]}); doneSet.add(m[0]); }
+    });
+    restoredN = doneSet.size;
+  } catch(e) {}
+}
+function clearProgress(){
+  try { localStorage.removeItem(STORE_KEY) } catch(e) {}
+  marks.clear(); doneSet.clear(); resetClock(); doneManual = false; hideDone(); render();
+}
+function clickedToday(){ var t = today(), n = 0; marks.forEach(function(m){ if (m.d === t) n++ }); return n }
+
 function nowTime(){ return new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}) }
 function rowBtn(label, fn){ var b = document.createElement("button"); b.type = "button"; b.className = "btn alt small"; b.textContent = label; b.onclick = fn; return b }
 
 function makeRow(o, idx){
   var st = marks.get(o.id);   /* undefined, or {k:"done"|"skip", t:"05:25 PM"} */
   var r = document.createElement("div");
-  r.className = "row" + (tab === "not" && st ? (st.k === "skip" ? " skip" : " done") : "");
-  var n = document.createElement("span"); n.className = "num"; n.textContent = idx + 1; r.appendChild(n);
+  r.className = "row" + (st && (tab === "not" || tab === "done") ? (st.k === "skip" ? " skip" : " done") : "");
+  var n = document.createElement("span"); n.className = "num"; n.textContent = o.n || idx + 1; r.appendChild(n);
   var s = document.createElement("span"); s.className = "id"; s.textContent = demo ? "@demo_user_" + String(o.id).replace("demo-", "") : "ID " + o.id; r.appendChild(s);
-  if (tab === "not" && st) {
+  if (st && (tab === "not" || tab === "done")) {
     var m = document.createElement("span"); m.className = "meta";
     m.textContent = st.k === "skip" ? "Not following" : "Clicked " + st.t; r.appendChild(m);
-    r.appendChild(rowBtn("Undo", function(){ marks.delete(o.id); doneSet.delete(o.id); render(); }));
-    if (st.k === "done") r.appendChild(rowBtn("Not following", function(){ marks.set(o.id, {k:"skip", t:st.t}); render(); }));
+    r.appendChild(rowBtn("Undo", function(){ marks.delete(o.id); doneSet.delete(o.id); saveProgress(); render(); }));
+    if (st.k === "done") r.appendChild(rowBtn("Not following", function(){ marks.set(o.id, {k:"skip", t:st.t, d:st.d}); saveProgress(); render(); }));
     return r;
   }
   var a = document.createElement("a"); a.className = "btn alt small"; a.href = demo ? "#" : profileUrl(o.id); a.target = "_blank"; a.rel = "noopener noreferrer"; a.textContent = "Open profile";
@@ -394,23 +513,27 @@ function makeRow(o, idx){
     if (e.type === "auxclick" && e.button !== 1) return;   /* only middle-click, not right-click */
     if (demo) e.preventDefault();   /* demo accounts are made up: open nothing */
     if (tab !== "not") return;
-    marks.set(o.id, {k:"done", t:nowTime()}); doneSet.add(o.id); startWait();
-    setTimeout(render, 80);   /* redraw after the link has opened */
+    marks.set(o.id, {k:"done", t:nowTime(), d:today()}); doneSet.add(o.id); saveProgress(); startWait();
+    r.classList.add("done"); updateTodo();                 /* cross it out straight away */
+    setTimeout(render, 300);                               /* then move it to the Done tab */
   };
   r.appendChild(a);
   return r;
 }
 
-/* progress panel: clicked / remaining on this page and overall */
+/* progress panel: clicked / remaining overall, plus tab counts */
 function updateTodo(){
   var p = $("panel");
+  var tn = document.querySelector('[data-tab="not"]'), td = document.querySelector('[data-tab="done"]');
+  tn.textContent = lists.not.length ? "Don't follow you back \u00b7 " + (lists.not.length - doneSet.size).toLocaleString() + " left" : "Don't follow you back";
+  td.textContent = "Done \u00b7 " + doneSet.size.toLocaleString();
   if (tab !== "not") { p.classList.add("hidden"); return; }
   p.classList.remove("hidden");
-  var arr = lists.not, slice = arr.slice(page * size, page * size + size);
-  var d = slice.filter(function(o){ return doneSet.has(o.id) }).length;
-  $("pcount").textContent = d + " of " + slice.length + " done";
-  $("prog").innerHTML = '<div style="width:' + (slice.length ? d / slice.length * 100 : 0) + '%;background:#12805c"></div>';
-  $("remaining").textContent = (arr.length - doneSet.size).toLocaleString() + " remaining in total · " + doneSet.size.toLocaleString() + " clicked so far";
+  var arr = lists.not, d = doneSet.size;
+  $("pcount").textContent = d.toLocaleString() + " of " + arr.length.toLocaleString() + " done";
+  $("prog").innerHTML = '<div style="width:' + (arr.length ? d / arr.length * 100 : 0) + '%;background:#12805c"></div>';
+  checkDone(arr.length - doneSet.size);
+  $("remaining").textContent = (arr.length - doneSet.size).toLocaleString() + " remaining in total · " + doneSet.size.toLocaleString() + " clicked so far · " + clickedToday().toLocaleString() + " clicked today";
 }
 
 /* pause after each "Open profile" click in the not-following-back list */
@@ -434,22 +557,152 @@ function resetClock(){
   $("clock").textContent = "00:00"; $("pill").textContent = "Ready"; $("pill").classList.add("ready");
 }
 
+/* finished card: share post + reminder to come back in 3 months */
+function unfollowedCount(){ var n = 0; marks.forEach(function(m){ if (m.k === "done") n++ }); return n }
+function shareLine(n){
+  return "I just managed to unfollow " + n + (n === 1 ? " account that was" : " accounts that were") + " not following back through this tool by @" + X_HANDLE;
+}
+function hideDone(){ $("doneCard").classList.add("hidden") }
+function checkDone(remaining){
+  var finished = lists.not.length > 0 && remaining === 0;
+  var visible = !$("doneCard").classList.contains("hidden");
+  if (finished) showDone(!visible);
+  else if (visible && !doneManual) hideDone();
+  else if (visible) refreshDone();
+}
+function refreshDone(){
+  var n = unfollowedCount(), line = shareLine(n);
+  $("doneShareBox").classList.toggle("hidden", n === 0 || demo);
+  $("doneText").textContent = n > 0
+    ? (demo ? "Demo finished. With real data, a post is ready for you to share here." : "You unfollowed " + n.toLocaleString() + (n === 1 ? " account" : " accounts") + " that " + (n === 1 ? "was" : "were") + " not following you back.")
+    : "You're all caught up.";
+  $("donePreview").textContent = line + " " + SITE_URL + " #" + HASHTAG;
+  $("doneX").href = "https://x.com/intent/post?text=" + encodeURIComponent(line) + "&url=" + encodeURIComponent(SITE_URL) + "&hashtags=" + encodeURIComponent(HASHTAG);
+  if (!navigator.share) $("doneNative").classList.add("hidden");
+}
+function showDone(scroll){
+  refreshDone(); showR3Time();
+  $("doneCard").classList.remove("hidden");
+  if (scroll) $("doneCard").scrollIntoView({behavior:"smooth", block:"center"});
+}
+$("finishBtn").onclick = function(){ doneManual = true; showDone(true) };
+$("doneNative").onclick = function(){ var n = unfollowedCount(); navigator.share({title:"Who doesn't follow me back on X?", text:shareLine(n) + " #" + HASHTAG, url:SITE_URL}).catch(function(){}) };
+$("doneCopy").onclick = function(){
+  var b = $("doneCopy"), t = shareLine(unfollowedCount()) + " " + SITE_URL + " #" + HASHTAG;
+  (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function(){b.textContent="Copied!"}, function(){b.textContent="Copy failed"});
+  setTimeout(function(){b.textContent="Copy text"}, 1800);
+};
+
+/* reminder in 3 months (all-day event) */
+function ymd(d){ return d.getFullYear() + pad2(d.getMonth()+1) + pad2(d.getDate()) }
+function in3Months(){
+  var d = new Date(), day = d.getDate();
+  d.setMonth(d.getMonth() + 3);
+  if (d.getDate() !== day) d.setDate(0);   /* e.g. 30 Nov + 3 months: last day of February, not March */
+  return d;
+}
+function r3(){
+  var d = in3Months(), next = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+  return { d: d, start: ymd(d), end: ymd(next),
+    title: "Request a new X archive and check who doesn't follow back",
+    details: "Time to check again. Request your new X archive (it takes about a day), then upload it here: " + SITE_URL };
+}
+function showR3Time(){ $("r3when").textContent = in3Months().toLocaleDateString([], {weekday:"short", day:"numeric", month:"long", year:"numeric"}) }
+$("r3Google").onclick = function(){
+  var r = r3();
+  window.open("https://calendar.google.com/calendar/render?action=TEMPLATE&text=" + encodeURIComponent(r.title) + "&details=" + encodeURIComponent(r.details) + "&dates=" + r.start + "/" + r.end, "_blank", "noopener");
+};
+$("r3Ics").onclick = function(){
+  var r = r3(), esc = function(s){ return s.replace(/[\\;,]/g, "\\$&") };
+  var ics = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//x-unfollow//EN","BEGIN:VEVENT",
+    "UID:" + Date.now() + "-3m@x-unfollow","DTSTAMP:" + icsTime(new Date()),"DTSTART;VALUE=DATE:" + r.start,"DTEND;VALUE=DATE:" + r.end,
+    "SUMMARY:" + esc(r.title),"DESCRIPTION:" + esc(r.details),
+    "BEGIN:VALARM","TRIGGER:PT9H","ACTION:DISPLAY","DESCRIPTION:" + esc(r.title),"END:VALARM",
+    "END:VEVENT","END:VCALENDAR"].join("\r\n");
+  var blob = new Blob([ics], {type:"text/calendar;charset=utf-8"});
+  var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "x-check-again-reminder.ics";
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){URL.revokeObjectURL(a.href)}, 2000);
+};
+
+$("clearSaved").onclick = function(){
+  if (window.confirm("Erase your saved progress on this device? Your Done list will be emptied.")) clearProgress();
+};
+
 /* CSV */
 $("csv").onclick = function(){
-  var names = {not:"not-following-back", fans:"fans-you-dont-follow", mutual:"mutuals"};
-  var rows = ["profile_link,account_id"].concat(lists[tab].map(function(o){return profileUrl(o.id) + "," + o.id}));
+  var names = {not:"not-following-back", fans:"fans-you-dont-follow", mutual:"mutuals", done:"done"};
+  var rows = ["profile_link,account_id"].concat(listFor(tab).map(function(o){return profileUrl(o.id) + "," + o.id}));
   var blob = new Blob(["\ufeff" + rows.join("\r\n")], {type:"text/csv;charset=utf-8"});
   var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "x-" + names[tab] + ".csv";
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){URL.revokeObjectURL(a.href)}, 2000);
 };
 
-/* sharing */
-function shareText(){ return "My X follow-back rate is " + rate + "%. Check yours with this free tool that never leaves your browser:" }
-function setShare(){
-  $("shareX").href = "https://x.com/intent/post?text=" + encodeURIComponent(shareText()) + "&url=" + encodeURIComponent(SITE_URL) + "&hashtags=" + encodeURIComponent(HASHTAG) + "&via=" + encodeURIComponent(X_HANDLE);
-  if (!navigator.share) $("shareNative").classList.add("hidden");
+/* share image (drawn in the browser, numbers only) */
+function rrect(c, x, y, w, h, r){ c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath() }
+function drawShareImage(){
+  var cv = $("shareCanvas"), c = cv.getContext("2d"), W = 1600, H = 900;
+  var F = '-apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  var n = lists.not.length, m = lists.mutual.length, f = lists.fans.length, tot = (n + m + f) || 1;
+  c.clearRect(0, 0, W, H);
+  c.fillStyle = "#000"; c.fillRect(0, 0, W, H);
+  c.strokeStyle = "#2f3336"; c.lineWidth = 3; rrect(c, 28, 28, W - 56, H - 56, 40); c.stroke();
+  c.textBaseline = "alphabetic"; c.textAlign = "left";
+  c.fillStyle = "#71767b"; c.font = "600 28px " + F; if ("letterSpacing" in c) c.letterSpacing = "5px";
+  c.fillText("FOLLOW-BACK CHECK", 90, 118); if ("letterSpacing" in c) c.letterSpacing = "0px";
+  /* big number */
+  var num = n.toLocaleString(), size = num.length > 5 ? 190 : num.length > 3 ? 230 : 280;
+  c.fillStyle = "#e7e9ea"; c.font = "800 " + size + "px " + F; c.fillText(num, 90, 500);
+  c.font = "600 50px " + F; c.fillText(n === 1 ? "account doesn't follow me back" : "accounts don't follow me back", 90, 585);
+  /* divider */
+  c.strokeStyle = "#2f3336"; c.lineWidth = 3; c.beginPath(); c.moveTo(930, 190); c.lineTo(930, 660); c.stroke();
+  /* rate */
+  c.fillStyle = "#71767b"; c.font = "600 28px " + F; if ("letterSpacing" in c) c.letterSpacing = "4px";
+  c.fillText("FOLLOW-BACK RATE", 990, 290); if ("letterSpacing" in c) c.letterSpacing = "0px";
+  c.fillStyle = "#e7e9ea"; c.font = "800 150px " + F; c.fillText(rate + "%", 990, 440);
+  var bx = 990, bw = 520, bh = 26, by = 490, x = bx;
+  c.save(); rrect(c, bx, by, bw, bh, 13); c.clip();
+  [[m, "#00ba7c"], [n, "#ffd400"], [f, "#71767b"]].forEach(function(p){ var w = p[0] / tot * bw; c.fillStyle = p[1]; c.fillRect(x, by, w, bh); x += w });
+  c.restore();
+  c.font = "500 28px " + F;
+  [[m, "mutual", "#00ba7c"], [n, "not following back", "#ffd400"], [f, "fans you don't follow", "#71767b"]].forEach(function(r, i){
+    var y = 568 + i * 46;
+    c.fillStyle = r[2]; rrect(c, bx, y - 21, 22, 22, 6); c.fill();
+    c.fillStyle = "#8b98a5"; c.fillText(r[0].toLocaleString() + " " + r[1], bx + 38, y);
+  });
+  /* footer */
+  c.fillStyle = "#e7e9ea"; c.font = "700 38px " + F; c.fillText("Found with the free follow-back tool by @" + X_HANDLE, 90, 760);
+  c.fillStyle = "#71767b"; c.font = "500 30px " + F; c.fillText(SITE_URL.replace(/^https?:\/\//, "").replace(/\/$/, ""), 90, 812);
+  c.textAlign = "right"; c.fillText("#" + HASHTAG, W - 90, 812); c.textAlign = "left";
 }
-$("shareNative").onclick = function(){ navigator.share({title:"Who doesn't follow me back on X?", text:shareText() + " #" + HASHTAG + " via @" + X_HANDLE, url:SITE_URL}).catch(function(){}) };
+function imageBlob(cb){ $("shareCanvas").toBlob(cb, "image/png") }
+$("saveImg").onclick = function(){
+  imageBlob(function(b){
+    var a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = "x-follow-back-check.png";
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(a.href) }, 2000);
+  });
+};
+$("shareImg").onclick = function(){
+  imageBlob(function(b){
+    var file = new File([b], "x-follow-back-check.png", {type: "image/png"});
+    navigator.share({files: [file], text: shareText() + " #" + HASHTAG + " " + SITE_URL}).catch(function(){});
+  });
+};
+
+/* sharing */
+function shareText(){
+  var n = lists.not.length;
+  return "I found " + n.toLocaleString() + (n === 1 ? " account that doesn't" : " accounts that don't") + " follow me back, and my follow-back rate is " + rate + "%. Found with this free tool by @" + X_HANDLE + ":";
+}
+function setShare(){
+  $("shareX").href = "https://x.com/intent/post?text=" + encodeURIComponent(shareText()) + "&url=" + encodeURIComponent(SITE_URL) + "&hashtags=" + encodeURIComponent(HASHTAG);
+  if (!navigator.share) $("shareNative").classList.add("hidden");
+  try {
+    var probe = new File([""], "x.png", {type: "image/png"});
+    if (navigator.canShare && navigator.canShare({files: [probe]})) $("shareImg").classList.remove("hidden");
+  } catch(e) {}
+  try { drawShareImage() } catch(e) { $("shareCanvas").classList.add("hidden"); $("saveImg").classList.add("hidden"); $("shareImg").classList.add("hidden") }
+}
+$("shareNative").onclick = function(){ navigator.share({title:"Who doesn't follow me back on X?", text:shareText() + " #" + HASHTAG, url:SITE_URL}).catch(function(){}) };
 $("copy").onclick = function(){
   var b = $("copy");
   (navigator.clipboard ? navigator.clipboard.writeText(SITE_URL) : Promise.reject()).then(function(){b.textContent="Copied!"}, function(){b.textContent="Copy failed"});
